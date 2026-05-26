@@ -3,11 +3,23 @@ python-docx>=1.1.0
 PyPDF2>=3.0.0
 chardet>=5.2.0
 
-# LangChain - Chunking & LLM
+# LangChain - Chunking, Search & LLM
 langchain-core>=0.3.0
 langchain-text-splitters>=0.3.0
 langchain-experimental>=0.3.0
+langchain-community>=0.3.0
+langchain-openai>=0.1.0
 langchain-xai>=0.2.0
+
+# Vector Store & Hybrid Search
+faiss-cpu>=1.7.4
+rank-bm25>=0.2.2
+
+# Backend REST API
+fastapi>=0.100.0
+uvicorn>=0.22.0
+python-multipart>=0.0.6
+jinja2>=3.1.2
 
 # Embeddings (free, local - no API key needed)
 sentence-transformers>=3.0.0
@@ -17,9 +29,19 @@ pydantic>=2.0.0
 pydantic-settings>=2.0.0
 python-dotenv>=1.0.0
 
-# Utilities
+# Evaluation
+nltk>=3.8.1
+rouge-score>=0.1.2
+pandas>=2.0.0
+openpyxl>=3.1.0
+matplotlib>=3.7.0
+
+# Utilities & Notebook
 tqdm>=4.66.0
 numpy>=1.26.0
+notebook>=7.0.0
 
 # Testing
 pytest>=8.0.0
+pytest-asyncio>=0.21.0
+

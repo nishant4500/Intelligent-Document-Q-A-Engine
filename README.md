@@ -1,150 +1,140 @@
-# Intelligent Document Q&A Engine
+# Intelligent Document Q&A Engine (Project 1)
 
-A production-ready RAG (Retrieval-Augmented Generation) pipeline for ingesting documents, chunking text, and generating vector embeddings.
+[![FastAPI REST API](https://img.shields.io/badge/API-FastAPI-00cfe8?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
+[![Vector Index](https://img.shields.io/badge/Dense%20Vector-FAISS-7367f0?style=for-the-badge)](https://github.com/facebookresearch/faiss)
+[![Keyword Index](https://img.shields.io/badge/Sparse%20Index-BM25-f39c12?style=for-the-badge)](https://github.com/dorianbrown/rank_bm25)
+[![Orchestration](https://img.shields.io/badge/Orchestration-LangChain-28c76f?style=for-the-badge)](https://github.com/langchain-ai/langchain)
 
-## Features
-
-### Document Ingestion (US-102, US-103)
-- **PDF** — Multi-page text extraction with metadata (PyPDF2)
-- **DOCX** — Paragraph, table, and property extraction (python-docx)
-- **TXT** — Auto-encoding detection, BOM stripping, whitespace normalization (chardet)
-
-### Chunking Strategies (US-104, US-105, US-106)
-| Strategy | Method | Speed | Best For |
-|:---------|:-------|:------|:---------|
-| **Recursive** | Character-based with separator hierarchy | Fast | General purpose (default) |
-| **Semantic** | Embedding-similarity breakpoints | Slow | Topic-diverse documents |
-| **Sliding Window** | Fixed-size overlapping windows | Fast | Dense information retrieval |
-
-### Embedding Generation (US-107)
-- OpenAI `text-embedding-3-small` (1536 dimensions)
-- Batch processing with progress tracking
-- Disk persistence for FAISS indexing
+A production-grade, end-to-end Retrieval-Augmented Generation (RAG) pipeline for multi-format document ingestion, optimized hybrid retrieval, relevance re-ranking, and high-fidelity cited Q&A generation with streaming response support.
 
 ---
 
-## Quick Start
+## ── Architectural Overview ──────────────────────────────────────────
 
-### 1. Install Dependencies
+```mermaid
+graph TD
+    A[Ingest Multi-format File] --> B[Partitioning: Chunker Strategy]
+    B -->|Recursive Chunker| C[Dense Vector Embedding: MiniLM-L6]
+    B -->|Sliding Window Chunker| C
+    B -->|Semantic Chunker| C
+    C --> D[(Dense Vector Index: FAISS)]
+    B --> E[(Sparse Keyword Index: BM25)]
+    
+    Query[User Query] --> F[Hybrid Search Fusion]
+    D --> F
+    E --> F
+    F -->|Weighted Normalized Fusion| G[Re-ranking: ms-marco-MiniLM]
+    G -->|Top Grounded Snippets| H[CoT Prompt Engine]
+    H --> I[LLM: Grok / OpenAI / Offline Mock]
+    I -->|Streaming SSE| J[FastAPI SPA Web Dashboard]
+```
+
+---
+
+## ── Key Features ───────────────────────────────────────────────────
+
+### 📄 Multi-Format Ingestion (US-102 to US-103)
+- **PDF Extraction**: Multi-page extraction with structural page indicators and metadata caching.
+- **DOCX Parsing**: Extract paragraphs, structural runs, and document properties.
+- **Text Normalization**: Automatic chardet encoding detection, BOM stripping, and whitespace consolidation.
+
+### ✂️ Configurable Partitioning (US-104 to US-106)
+- **Recursive Character**: Multi-level paragraph-to-word separation hierarchy (standard).
+- **Overlapping Sliding Window**: Constant window slides capturing dense boundary contexts.
+- **Semantic Breakpoints**: Analyzes sentence embedding similarities locally to split texts exclusively when logical topic changes occur.
+
+### 🧠 High-Fidelity Hybrid Retrieval & Re-ranking (US-115 to US-116)
+- **FAISS CPU Dense Search**: Cosine similarity vectors search.
+- **BM25 Sparse Keyword Search**: High-recall lexical matches.
+- **Normalized Weighted Fusion**: Merges sparse and dense scores using adaptive parameters.
+- **Cross-Encoder Re-ranking**: Evaluates retrieved chunks alongside queries using `ms-marco-MiniLM-L-6-v2` for sub-20ms grounded snippet positioning.
+
+### 💬 Cited Streaming Completion (US-109 to US-111)
+- **Chain-of-Thought (CoT)**: Prompting forcing the LLM to write out step-by-step reasoning.
+- **Strict In-text Footnotes**: Inline source citations referencing the source document and chunk index in brackets `[Source: document.pdf, Chunk: 2]`.
+- **Server-Sent Events (SSE)**: Streams text tokens in real-time accompanied by final citations cards JSON.
+- **Offline Mock Generator**: Gracefully summarizes contexts and streams answers offline when API keys are absent!
+
+### 📊 Comprehensive Benchmarking & Feedback Loops (US-117 to US-118)
+- **Local RAG Evaluator**: Computes BLEU, ROUGE-L, and custom groundedness Faithfulness metrics.
+- **SQLite Transaction Database**: Automatically logs query history, ratings, and user-provided corrections.
+
+---
+
+## ── Quick Start ────────────────────────────────────────────────────
+
+### 1. Clone & Install Dependencies
+Ensure you have Python 3.10+ installed:
 ```bash
+# Install core and advanced dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
+### 2. Configure Environment Variables
+Create a `.env` file in the root directory (based on `.env.example`):
+```ini
+# LLM Provider: xai | openai | mock
+LLM_PROVIDER=mock
+
+# xAI Credentials (Optional)
+XAI_API_KEY=your-xai-key-here
+XAI_MODEL=grok-2
+
+# OpenAI Credentials (Optional)
+OPENAI_API_KEY=your-openai-key-here
+OPENAI_MODEL=gpt-4o-mini
+```
+
+### 3. Start the Web Dashboard & REST Server
+Launch the application:
 ```bash
-cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
+python main.py --serve
 ```
-
-### 3. Run the Pipeline
-```bash
-# Basic: Ingest + chunk a document
-python main.py --file docs/report.pdf --chunker recursive
-
-# With embeddings
-python main.py --file docs/notes.txt --chunker sliding_window --embed
-
-# Semantic chunking (requires API key)
-python main.py --file docs/paper.docx --chunker semantic --embed
-
-# Custom chunk sizes
-python main.py --file docs/report.pdf --chunker recursive --chunk-size 1000 --chunk-overlap 100
-```
+👉 Open **[http://127.0.0.1:8000](http://127.0.0.1:8000)** in your web browser to access the beautiful glassmorphic SPA dashboard!
 
 ---
 
-## Project Structure
+## ── Command Line Interface (CLI) Usage ─────────────────────────────
 
-```
-├── config/
-│   └── settings.py              # Centralized Pydantic settings
-├── ingestion/
-│   ├── base_reader.py           # Abstract reader interface + Document model
-│   ├── pdf_reader.py            # PDF ingestion (PyPDF2)
-│   ├── docx_reader.py           # DOCX ingestion (python-docx)
-│   └── txt_reader.py            # TXT ingestion (chardet)
-├── chunking/
-│   ├── base_chunker.py          # Abstract chunker interface + Chunk model
-│   ├── recursive_chunker.py     # LangChain RecursiveCharacterTextSplitter
-│   ├── semantic_chunker.py      # LangChain SemanticChunker (experimental)
-│   └── sliding_window_chunker.py# Custom sliding-window implementation
-├── embeddings/
-│   └── embedding_generator.py   # OpenAI embedding generation + persistence
-├── tests/
-│   ├── test_ingestion.py        # Ingestion tests
-│   ├── test_chunking.py         # Chunking tests
-│   └── test_embeddings.py       # Embedding tests
-├── main.py                      # CLI pipeline runner
-├── requirements.txt             # Dependencies
-└── .env.example                 # Environment variable template
-```
-
----
-
-## Configuration
-
-All settings are centralized in `config/settings.py` and loaded from `.env`:
-
-| Variable | Default | Description |
-|:---------|:--------|:------------|
-| `OPENAI_API_KEY` | — | Required for embeddings and semantic chunking |
-| `EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI embedding model |
-| `CHUNK_SIZE` | `512` | Max characters per chunk (recursive) |
-| `CHUNK_OVERLAP` | `50` | Overlap between chunks (recursive) |
-| `SLIDING_WINDOW_SIZE` | `512` | Window size (sliding window) |
-| `SLIDING_WINDOW_STEP` | `256` | Step size (sliding window) |
-| `SEMANTIC_BREAKPOINT_TYPE` | `percentile` | Breakpoint detection method |
-
----
-
-## Testing
+The engine exposes a highly integrated CLI utility to perform indexing, search, evaluation, and server management.
 
 ```bash
-# Run all tests (except API-dependent ones)
-pytest tests/ -v -m "not api"
+# 1. Ingest, chunk, embed, and index a document into the database
+python main.py --index -f docs/technical_spec.pdf --chunker semantic
 
-# Run all tests including API integration
-pytest tests/ -v
+# 2. Ingest with recursive chunker overrides
+python main.py --index -f docs/notes.txt --chunker recursive --chunk-size 1000 --chunk-overlap 100
 
-# Run specific test suites
-pytest tests/test_ingestion.py -v
-pytest tests/test_chunking.py -v
+# 3. Direct Q&A command-line search (streams answer and prints source citations)
+python main.py --query "What sharding strategy is used to achieve 20,000 writes per second?"
+
+# 4. Trigger quantitative evaluation suite comparing strategies
+python main.py --eval
 ```
 
 ---
 
-## API Usage
+## ── API Route Specification ────────────────────────────────────────
 
-```python
-from dotenv import load_dotenv
-load_dotenv()
+The FastAPI REST endpoint is fully documented via interactive Swagger UI at `/docs`.
 
-from ingestion import ingest
-from chunking import get_chunker
-from embeddings import EmbeddingGenerator
-
-# 1. Ingest a document
-doc = ingest("path/to/document.pdf")
-print(f"Extracted {doc.word_count} words")
-
-# 2. Chunk the document
-chunker = get_chunker("recursive", chunk_size=500, chunk_overlap=50)
-chunks = chunker.chunk(doc)
-print(f"Generated {len(chunks)} chunks")
-
-# 3. Generate embeddings
-generator = EmbeddingGenerator()
-embedded = generator.generate(chunks)
-print(f"Created {len(embedded)} embeddings ({embedded[0].dimensions}D)")
-
-# 4. Save for later use
-generator.save(embedded)
-```
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/ingest` | Uploads and indexes a document. Accepts strategy and size parameters. |
+| `POST` | `/api/query` | SSE streaming Q&A query. Streams tokens and yields cited source cards. |
+| `POST` | `/api/feedback` | Registers thumbs rating (+1/-1) and user corrections in SQLite. |
+| `GET` | `/api/documents` | Lists unique indexed documents and structural chunk statistics. |
+| `GET` | `/api/evaluation-metrics` | Returns precomputed strategy benchmarks for visual graphs. |
+| `GET` | `/` | Serves the premium SPA dashboard interface. |
 
 ---
 
-## Authors
+## ── Premium UI Dashboard Overview ───────────────────────────────
 
-- **Nishant Dwivedi** — Document Ingestion & Chunking (US-102 to US-107)
-- **Mehul Agarwal** — FAISS Indexing, Retrieval & API (US-108 to US-114)
-- **Vidushi Negi** — Evaluation & Advanced Extensions (US-115 to US-121)
+Hosted directly on the root API route, the single-page application (SPA) dashboard features:
+1. **Glassmorphism Aesthetic**: Translucent overlay cards, deep indigo/cyan radial glows, and responsive styling.
+2. **Real-time Streaming Chat**: Answers render token-by-token with typewriter effects and inline highlighted citations.
+3. **Cited Source Card Grid**: Shows clickable document cards. Clicking a card opens a modal showing the exact text snippet referenced.
+4. **Ingestion Manager**: Upload files via drag-and-drop and toggle strategies/size parameters interactively.
+5. **Interactive Benchmarks**: Integrates visual comparative bars mapping BLEU and groundedness metrics.
+6. **SQLite Feedback Integration**: Submit thumbs ratings and text corrections directly beneath answers.
