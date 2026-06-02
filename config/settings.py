@@ -18,13 +18,16 @@ try:
         """Application-wide configuration backed by .env file (pydantic)."""
 
         # ── LLM Configuration ──────────────────────────────────────────────
-        LLM_PROVIDER: str = "xai"  # "xai" | "openai" | "mock"
+        LLM_PROVIDER: str = "xai"  # "xai" | "openai" | "groq" | "mock"
         XAI_API_KEY: str = ""
         XAI_MODEL: str = "grok-2"  # standard xai model
         XAI_API_BASE: str = "https://api.x.ai/v1"
         OPENAI_API_KEY: str = ""
         OPENAI_MODEL: str = "gpt-4o-mini"
         OPENAI_API_BASE: str = "https://api.openai.com/v1"
+        GROQ_API_KEY: str = ""
+        GROQ_MODEL: str = "llama-3.1-8b-instant"  # llama3-8b-8192 was decommissioned
+        GROQ_API_BASE: str = "https://api.groq.com/openai/v1"
 
         # ── Embeddings (local, free via sentence-transformers) ──────────────
         EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
@@ -74,6 +77,9 @@ except Exception:  # pragma: no cover - fallback when pydantic_settings isn't av
         OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
         OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         OPENAI_API_BASE: str = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+        GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+        GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+        GROQ_API_BASE: str = os.getenv("GROQ_API_BASE", "https://api.groq.com/openai/v1")
 
         EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
         EMBEDDING_DIMENSIONS: int = int(os.getenv("EMBEDDING_DIMENSIONS", "384"))

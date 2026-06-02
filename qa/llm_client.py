@@ -49,6 +49,10 @@ class LLMClient:
             self.api_key = api_key or settings.OPENAI_API_KEY
             self.model = model or settings.OPENAI_MODEL or "gpt-4o-mini"
             self.api_base = settings.OPENAI_API_BASE or "https://api.openai.com/v1"
+        elif self.provider == "groq":
+            self.api_key = api_key or settings.GROQ_API_KEY
+            self.model = model or settings.GROQ_MODEL or "llama-3.1-8b-instant"
+            self.api_base = settings.GROQ_API_BASE or "https://api.groq.com/openai/v1"
         else:
             self.provider = "mock"
             self.api_key = ""
@@ -56,7 +60,7 @@ class LLMClient:
             self.api_base = ""
 
         # Fallback to mock if API key is missing for key-required providers
-        if self.provider in ["xai", "openai"] and not self.api_key:
+        if self.provider in ["xai", "openai", "groq"] and not self.api_key:
             logger.warning(
                 f"LLM provider '{self.provider}' requested but no API key was provided or configured. "
                 "Falling back to local 'mock' provider."
@@ -66,7 +70,7 @@ class LLMClient:
 
         # Initialize OpenAI client if using xAI or OpenAI
         self._client = None
-        if self.provider in ["xai", "openai"]:
+        if self.provider in ["xai", "openai", "groq"]:
             from openai import OpenAI
             logger.info(f"Initializing {self.provider.upper()} API client using model '{self.model}'...")
             self._client = OpenAI(api_key=self.api_key, base_url=self.api_base)
